@@ -1,3 +1,5 @@
+// TODO : Check the API limits on LibreTranslate and Scryfall
+
 require("dotenv").config();
 
 const fetch = require("node-fetch");
@@ -49,19 +51,22 @@ async function card_req(cardname) {
     let res = await fetch("https://libretranslate.com/translate", {
       method: "POST",
       body: JSON.stringify({
+        // Make the string to be translated by concatenating the pieces with \n\n as a delimiter
         q:
           name +
           "\n\n" +
           type_line +
           "\n\n" +
-          oracle_text +
+          (oracle_text === undefined ? "" : oracle_text) +
           "\n\n" +
-          flavor_text,
+          (flavor_text === undefined ? "" : flavor_text),
         source: lang_list[seq[i]],
         target: lang_list[seq[i === seq.length - 1 ? 0 : i + 1]],
       }),
       headers: { "Content-Type": "application/json" },
     });
+
+    // Process the response and unpack its contents using the delimiter
     let res_json = await res.json();
     let part_array = res_json.translatedText.split("\n\n");
     name = part_array[0];
@@ -70,6 +75,7 @@ async function card_req(cardname) {
     flavor_text = part_array[3];
   }
 
+  // Construct the final reply string
   let reply_string =
     "\n" +
     name +
@@ -77,12 +83,12 @@ async function card_req(cardname) {
     body.mana_cost +
     "\n" +
     type_line +
-    "\n" +
-    oracle_text +
-    "\n\n" +
-    "*" +
-    flavor_text +
-    "*";
+    (oracle_text === undefined || oracle_text === ""
+      ? ""
+      : "\n" + oracle_text) +
+    (flavor_text === undefined || flavor_text === ""
+      ? ""
+      : "\n\n" + "*" + flavor_text + "*");
   if (body.power !== undefined) {
     reply_string += "\n" + body.power + "/" + body.toughness;
   }
@@ -90,10 +96,12 @@ async function card_req(cardname) {
   return reply_string;
 }
 
+// On each message in the server, check if it is a rosewattabot command
 client.on("message", (msg) => {
   if (msg.content.startsWith("!trans")) {
     // Get the card name and fetch the json from the scryfall API
     let cardname = msg.content.split(" ").slice(1).join("_");
+    console.log(`Making request for ${cardname}`);
 
     // Make the entirety of the card request and print the final translation
     card_req(cardname)
