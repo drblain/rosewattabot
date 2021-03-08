@@ -43,6 +43,33 @@ async function card_req(cardname) {
   let oracle_text = body.oracle_text;
   let flavor_text = body.flavor_text;
 
+  // make 10 requests to libretranslate
+  let seq = rand_sequence();
+  for (let i = 0; i < seq.length; i++) {
+    let res = await fetch("https://libretranslate.com/translate", {
+      method: "POST",
+      body: JSON.stringify({
+        q:
+          name +
+          "\n\n" +
+          type_line +
+          "\n\n" +
+          oracle_text +
+          "\n\n" +
+          flavor_text,
+        source: lang_list[seq[i]],
+        target: lang_list[seq[i === seq.length - 1 ? 0 : i + 1]],
+      }),
+      headers: { "Content-Type": "application/json" },
+    });
+    let res_json = await res.json();
+    let part_array = res_json.translatedText.split("\n\n");
+    name = part_array[0];
+    type_line = part_array[1];
+    oracle_text = part_array[2];
+    flavor_text = part_array[3];
+  }
+
   let reply_string =
     "\n" +
     name +
